@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Chaos Platform Roadmap</title>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                overflow: hidden;
+                background: #1a1a1a;
+            }
+            #visualization {
+                width: 100vw;
+                height: 100vh;
+            }
+            #legend {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                background: rgba(40, 40, 40, 0.95);
+                padding: 20px;
+                border-radius: 8px;
+                color: #ffffff;
+                min-width: 200px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+            }
+            #legend h3 {
+                margin-top: 0;
+                margin-bottom: 15px;
+                font-size: 16px;
+                font-weight: 600;
+                color: #ffffff;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 10px;
+                font-size: 13px;
+            }
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                border-radius: 3px;
+                margin-right: 10px;
+                border: 1px solid #fff;
+                flex-shrink: 0;
+            }
+            .legend-label {
+                color: #cccccc;
+                text-transform: capitalize;
+            }
+            #controls {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(40, 40, 40, 0.95);
+                padding: 20px;
+                border-radius: 8px;
+                color: #ffffff;
+                min-width: 250px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+            }
+            #controls h3 {
+                margin-top: 0;
+                margin-bottom: 15px;
+                font-size: 16px;
+                font-weight: 600;
+                color: #ffffff;
+            }
+            .control-group {
+                margin-bottom: 15px;
+            }
+            .control-group label {
+                display: block;
+                font-size: 13px;
+                margin-bottom: 5px;
+                color: #cccccc;
+            }
+            .control-group input[type="range"] {
+                width: 100%;
+                cursor: pointer;
+            }
+            .control-group .value-display {
+                display: inline-block;
+                margin-left: 10px;
+                font-weight: 600;
+                color: #4caf50;
+                min-width: 40px;
+            }
+            .control-group select {
+                width: 100%;
+                padding: 6px 10px;
+                border-radius: 4px;
+                border: 1px solid #555;
+                background: #2a2a2a;
+                color: #ffffff;
+                font-size: 13px;
+                cursor: pointer;
+            }
+            .control-group select:hover {
+                border-color: #4caf50;
+            }
+            .control-group input[type="text"] {
+                width: 100%;
+                padding: 6px 10px;
+                border-radius: 4px;
+                border: 1px solid #555;
+                background: #2a2a2a;
+                color: #ffffff;
+                font-size: 13px;
+                box-sizing: border-box;
+            }
+            .control-group input[type="text"]:focus {
+                outline: none;
+                border-color: #4caf50;
+            }
+            button {
+                background: #4caf50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 13px;
+                margin-top: 10px;
+                width: 100%;
+            }
+            button:hover {
+                background: #45a049;
+            }
+            .node circle {
+                stroke: #fff;
+                stroke-width: 2px;
+                cursor: pointer;
+            }
+            .node text {
+                font-size: 16px;
+                font-weight: 600;
+                pointer-events: none;
+                fill: #ffffff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+                user-select: none;
+                dominant-baseline: middle;
+            }
+            .node rect {
+                stroke: #fff;
+                stroke-width: 2px;
+                cursor: pointer;
+            }
+            .link {
+                fill: none;
+                stroke: #666;
+                stroke-opacity: 0.6;
+            }
+            .node-highlighted circle,
+            .node-highlighted rect {
+                stroke: #c800ff !important;
+                stroke-width: 5px !important;
+                filter: drop-shadow(0 0 8px #c800ff);
+                animation: highlight-blink 1.5s ease-in-out;
+            }
+
+            @keyframes highlight-blink {
+                0% {
+                    stroke: #c800ff;
+                    stroke-width: 5px;
+                    filter: drop-shadow(0 0 8px #c800ff);
+                }
+                25% {
+                    stroke: #c800ff;
+                    stroke-width: 8px;
+                    filter: drop-shadow(0 0 20px #c800ff);
+                }
+                50% {
+                    stroke: #c800ff;
+                    stroke-width: 5px;
+                    filter: drop-shadow(0 0 8px #c800ff);
+                }
+                75% {
+                    stroke: #c800ff;
+                    stroke-width: 8px;
+                    filter: drop-shadow(0 0 20px #c800ff);
+                }
+                100% {
+                    stroke: #c800ff;
+                    stroke-width: 5px;
+                    filter: drop-shadow(0 0 8px #c800ff);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="visualization"></div>
+
+        <div id="legend">
+            <h3>Legend</h3>
+            <div id="legend-content"></div>
+        </div>
+
+        <div id="controls">
+            <h3>Visualization Controls</h3>
+
+            <div class="control-group">
+                <label>
+                    Node Spacing Horizontal:
+                    <span class="value-display" id="spacing-horizontal-value"
+                        >2000</span
+                    >
+                </label>
+                <input
+                    type="range"
+                    id="spacing-horizontal-slider"
+                    min="1"
+                    max="2000"
+                    value="1000"
+                    step="1"
+                />
+            </div>
+            <div class="control-group">
+                <label>
+                    Node Spacing Vertical:
+                    <span class="value-display" id="spacing-vertical-value"
+                        >200</span
+                    >
+                </label>
+                <input
+                    type="range"
+                    id="spacing-vertical-slider"
+                    min="0"
+                    max="400"
+                    value="200"
+                    step="1"
+                />
+            </div>
+            <div class="control-group">
+                <label>
+                    Node Scale:
+                    <span class="value-display" id="node-scale-value">1.0</span>
+                </label>
+                <input
+                    type="range"
+                    id="node-scale-slider"
+                    min="0.5"
+                    max="2.0"
+                    value="1.0"
+                    step="0.1"
+                />
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Text Scale:
+                    <span class="value-display" id="text-scale-value">1.0</span>
+                </label>
+                <input
+                    type="range"
+                    id="text-scale-slider"
+                    min="0.5"
+                    max="2.0"
+                    value="1.0"
+                    step="0.1"
+                />
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Edge Width:
+                    <span class="value-display" id="edge-width-value">10</span>
+                </label>
+                <input
+                    type="range"
+                    id="edge-width-slider"
+                    min="0.5"
+                    max="20"
+                    value="10"
+                    step="0.5"
+                />
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Stagger Offset:
+                    <span class="value-display" id="stagger-offset-value"
+                        >0.1</span
+                    >
+                </label>
+                <input
+                    type="range"
+                    id="stagger-offset-slider"
+                    min="0"
+                    max="1"
+                    value="0.1"
+                    step="0.001"
+                />
+            </div>
+
+            <div class="control-group">
+                <label>Color by:</label>
+                <select id="color-mode-select">
+                    <option value="status">Status</option>
+                    <option value="visibility">Visibility</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>YAML File URL:</label>
+                <input
+                    type="text"
+                    id="yaml-url-input"
+                    placeholder="roadmap.yml"
+                />
+            </div>
+
+            <div class="control-group">
+                <label>Search:</label>
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="Search nodes..."
+                />
+            </div>
+
+            <button id="reset-btn">Reset to Defaults</button>
+            <button id="toggle-leaves-btn">Hide Leaf Nodes</button>
+        </div>
+
+        <script src="visualization.js"></script>
+        <script>
+            let roadmapData = null;
+            let hideLeavesState = false;
+            let colorMode = "status"; // 'status' or 'visibility'
+            let searchTerm = "";
+
+            // Get URL parameter for YAML file
+            function getYamlUrlFromParams() {
+                const params = new URLSearchParams(window.location.search);
+                return params.get("yaml") || "roadmap.yml";
+            }
+
+            // Update URL parameter without spamming history
+            function updateYamlUrlParam(url) {
+                const params = new URLSearchParams(window.location.search);
+                if (url && url !== "roadmap.yml") {
+                    params.set("yaml", url);
+                } else {
+                    params.delete("yaml");
+                }
+                const newUrl = params.toString()
+                    ? `${window.location.pathname}?${params.toString()}`
+                    : window.location.pathname;
+                window.history.replaceState({}, "", newUrl);
+            }
+
+            // Load YAML from URL
+            function loadYamlFromUrl(url) {
+                fetch(url)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(
+                                `HTTP error! status: ${response.status}`,
+                            );
+                        }
+                        return response.text();
+                    })
+                    .then((yamlText) => {
+                        roadmapData = jsyaml.load(yamlText);
+                        // Initialize the legend and visualization
+                        updateLegend();
+                        updateVisualization();
+                    })
+                    .catch((error) => {
+                        console.error("Error loading roadmap:", error);
+                        alert(`Failed to load YAML file: ${error.message}`);
+                    });
+            }
+
+            // Initialize YAML URL input and load initial data
+            const yamlUrlInput = document.getElementById("yaml-url-input");
+            const initialYamlUrl = getYamlUrlFromParams();
+            yamlUrlInput.value = initialYamlUrl;
+            loadYamlFromUrl(initialYamlUrl);
+
+            // Get controls
+            const spacingHorizontalSlider = document.getElementById(
+                "spacing-horizontal-slider",
+            );
+            const spacingVerticalSlider = document.getElementById(
+                "spacing-vertical-slider",
+            );
+            const nodeScaleSlider =
+                document.getElementById("node-scale-slider");
+            const textScaleSlider =
+                document.getElementById("text-scale-slider");
+            const edgeWidthSlider =
+                document.getElementById("edge-width-slider");
+            const staggerOffsetSlider = document.getElementById(
+                "stagger-offset-slider",
+            );
+            const resetBtn = document.getElementById("reset-btn");
+            const toggleLeavesBtn =
+                document.getElementById("toggle-leaves-btn");
+            const colorModeSelect =
+                document.getElementById("color-mode-select");
+            const searchInput = document.getElementById("search-input");
+
+            const spacingHorizontalValue = document.getElementById(
+                "spacing-horizontal-value",
+            );
+            const spacingVerticalValue = document.getElementById(
+                "spacing-vertical-value",
+            );
+            const nodeScaleValue = document.getElementById("node-scale-value");
+            const textScaleValue = document.getElementById("text-scale-value");
+            const edgeWidthValue = document.getElementById("edge-width-value");
+            const staggerOffsetValue = document.getElementById(
+                "stagger-offset-value",
+            );
+
+            // Update value displays
+            spacingHorizontalSlider.addEventListener("input", (e) => {
+                spacingHorizontalValue.textContent = e.target.value;
+                updateVisualization();
+            });
+
+            spacingVerticalSlider.addEventListener("input", (e) => {
+                spacingVerticalValue.textContent = e.target.value;
+                updateVisualization();
+            });
+
+            nodeScaleSlider.addEventListener("input", (e) => {
+                nodeScaleValue.textContent = parseFloat(e.target.value).toFixed(
+                    1,
+                );
+                updateVisualization();
+            });
+
+            textScaleSlider.addEventListener("input", (e) => {
+                textScaleValue.textContent = parseFloat(e.target.value).toFixed(
+                    1,
+                );
+                updateVisualization();
+            });
+
+            edgeWidthSlider.addEventListener("input", (e) => {
+                edgeWidthValue.textContent = parseFloat(e.target.value).toFixed(
+                    1,
+                );
+                updateVisualization();
+            });
+
+            staggerOffsetSlider.addEventListener("input", (e) => {
+                staggerOffsetValue.textContent = parseFloat(
+                    e.target.value,
+                ).toFixed(2);
+                updateVisualization();
+            });
+
+            // Reset button
+            resetBtn.addEventListener("click", () => {
+                spacingHorizontalSlider.value = 2000;
+                spacingVerticalSlider.value = 200;
+                nodeScaleSlider.value = 1.0;
+                textScaleSlider.value = 1.0;
+                edgeWidthSlider.value = 10;
+                staggerOffsetSlider.value = 0.2;
+                spacingHorizontalValue.textContent = "2000";
+                spacingVerticalValue.textContent = "200";
+                nodeScaleValue.textContent = "1.0";
+                textScaleValue.textContent = "1.0";
+                edgeWidthValue.textContent = "10";
+                staggerOffsetValue.textContent = "0.1";
+                updateVisualization();
+            });
+
+            // Toggle leaves button
+            toggleLeavesBtn.addEventListener("click", () => {
+                hideLeavesState = !hideLeavesState;
+                toggleLeavesBtn.textContent = hideLeavesState
+                    ? "Show Leaf Nodes"
+                    : "Hide Leaf Nodes";
+                updateVisualization();
+            });
+
+            // Color mode dropdown
+            colorModeSelect.addEventListener("change", (e) => {
+                colorMode = e.target.value;
+                updateLegend();
+                updateVisualization();
+            });
+
+            // Search input
+            searchInput.addEventListener("input", (e) => {
+                searchTerm = e.target.value.toLowerCase();
+                highlightSearchResults();
+            });
+
+            // YAML URL input with debounce to avoid excessive fetching
+            let yamlUrlTimeout;
+            yamlUrlInput.addEventListener("input", (e) => {
+                clearTimeout(yamlUrlTimeout);
+                yamlUrlTimeout = setTimeout(() => {
+                    const url = e.target.value.trim() || "roadmap.yml";
+                    updateYamlUrlParam(url);
+                    loadYamlFromUrl(url);
+                }, 500); // Wait 500ms after user stops typing
+            });
+
+            function updateVisualization() {
+                if (!roadmapData) return;
+
+                const config = {
+                    nodeSpacingHorizontal: parseInt(
+                        spacingHorizontalSlider.value,
+                    ),
+                    nodeSpacingVertical: parseInt(spacingVerticalSlider.value),
+                    nodeScale: parseFloat(nodeScaleSlider.value),
+                    textScale: parseFloat(textScaleSlider.value),
+                    edgeWidth: parseFloat(edgeWidthSlider.value),
+                    staggerOffset: parseFloat(staggerOffsetSlider.value),
+                    hideLeaves: hideLeavesState,
+                    colorMode: colorMode,
+                };
+
+                // Clear existing visualization
+                d3.select("#visualization").selectAll("*").remove();
+
+                // Re-initialize with new config
+                initVisualization(roadmapData, config);
+
+                // Re-apply search highlighting after visualization is updated
+                if (searchTerm) {
+                    highlightSearchResults();
+                }
+            }
+
+            function updateLegend() {
+                const legendContent = document.getElementById("legend-content");
+                legendContent.innerHTML = "";
+
+                if (colorMode === "status") {
+                    // Status color legend
+                    const statusItems = [
+                        { color: "#4CAF50", label: "Ready" },
+                        { color: "#FF9800", label: "Soon" },
+                        { color: "#FF0000", label: "Not Started" },
+                        { color: "#8000FF", label: "Won't Do" },
+                        { color: "#9E9E9E", label: "Default" },
+                    ];
+
+                    statusItems.forEach((item) => {
+                        const legendItem = document.createElement("div");
+                        legendItem.className = "legend-item";
+
+                        const colorBox = document.createElement("div");
+                        colorBox.className = "legend-color";
+                        colorBox.style.backgroundColor = item.color;
+
+                        const label = document.createElement("span");
+                        label.className = "legend-label";
+                        label.textContent = item.label;
+
+                        legendItem.appendChild(colorBox);
+                        legendItem.appendChild(label);
+                        legendContent.appendChild(legendItem);
+                    });
+                } else if (colorMode === "visibility") {
+                    // Visibility color legend
+                    const visibilityItems = [
+                        { color: "#2196F3", label: "Public" },
+                        { color: "#9E9E9E", label: "Internal" },
+                    ];
+
+                    visibilityItems.forEach((item) => {
+                        const legendItem = document.createElement("div");
+                        legendItem.className = "legend-item";
+
+                        const colorBox = document.createElement("div");
+                        colorBox.className = "legend-color";
+                        colorBox.style.backgroundColor = item.color;
+
+                        const label = document.createElement("span");
+                        label.className = "legend-label";
+                        label.textContent = item.label;
+
+                        legendItem.appendChild(colorBox);
+                        legendItem.appendChild(label);
+                        legendContent.appendChild(legendItem);
+                    });
+                }
+            }
+
+            function highlightSearchResults() {
+                // Get all nodes in the visualization
+                const nodes = d3.selectAll(".node");
+
+                if (!searchTerm || searchTerm.trim() === "") {
+                    // If search is empty, remove all highlights
+                    nodes.classed("node-highlighted", false);
+                    return;
+                }
+
+                // First, remove all highlights to reset animation
+                nodes.classed("node-highlighted", false);
+
+                // Force a reflow to restart the animation
+                void nodes.node()?.offsetWidth;
+
+                // Collect matching nodes and apply highlight
+                const matchingNodes = [];
+                nodes.each(function (d) {
+                    const nodeName = d.data.name
+                        ? d.data.name.toLowerCase()
+                        : "";
+                    const matches = nodeName.includes(searchTerm);
+                    if (matches) {
+                        matchingNodes.push(d);
+                        // Add highlight class after a brief delay to ensure animation triggers
+                        setTimeout(() => {
+                            d3.select(this).classed("node-highlighted", true);
+                        }, 10);
+                    }
+                });
+
+                // If we have matches, zoom to fit them
+                if (matchingNodes.length > 0) {
+                    zoomToNodes(matchingNodes);
+                }
+            }
+
+            function zoomToNodes(nodes) {
+                // Calculate bounding box of all matching nodes
+                let minX = Infinity,
+                    maxX = -Infinity;
+                let minY = Infinity,
+                    maxY = -Infinity;
+
+                nodes.forEach((d) => {
+                    const halfWidth = d.nodeWidth / 2;
+                    const halfHeight = d.nodeHeight / 2;
+
+                    minX = Math.min(minX, d.x - halfWidth);
+                    maxX = Math.max(maxX, d.x + halfWidth);
+                    minY = Math.min(minY, d.y - halfHeight);
+                    maxY = Math.max(maxY, d.y + halfHeight);
+                });
+
+                // Add padding around the bounding box
+                const padding = 100;
+                const boundingWidth = maxX - minX + 2 * padding;
+                const boundingHeight = maxY - minY + 2 * padding;
+
+                // Calculate the center point of the bounding box
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+
+                // Get viewport dimensions
+                const svg = d3.select("#visualization svg");
+                const width = parseFloat(svg.attr("width"));
+                const height = parseFloat(svg.attr("height"));
+
+                // Calculate scale to fit the bounding box in viewport
+                const scaleX = width / boundingWidth;
+                const scaleY = height / boundingHeight;
+                const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
+
+                // Calculate translation to center the bounding box
+                const translateX = width / 2 - centerX * scale;
+                const translateY = height / 2 - centerY * scale;
+
+                // Get the zoom behavior from the SVG
+                const zoom = d3
+                    .zoom()
+                    .scaleExtent([0.1, 4])
+                    .on("zoom", (event) => {
+                        d3.select("#visualization svg g").attr(
+                            "transform",
+                            event.transform,
+                        );
+                    });
+
+                // Apply the zoom transform with animation
+                svg.transition()
+                    .duration(750)
+                    .call(
+                        zoom.transform,
+                        d3.zoomIdentity
+                            .translate(translateX, translateY)
+                            .scale(scale),
+                    );
+            }
+        </script>
+    </body>
+</html>
