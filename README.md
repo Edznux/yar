@@ -22,3 +22,17 @@ Deployed regularly via cron:
 ```cron
 */5 * * * * cd $HOME/hosting && ( [ -d yar ] && cd yar && git pull
 ```
+
+Example.yml
+```yaml
+name: roadmap
+status: ready
+items:
+  - name: childnode
+    status: ready
+    category: Build
+    items:
+      - name: google
+        status: soon
+        link: google.com
+```
